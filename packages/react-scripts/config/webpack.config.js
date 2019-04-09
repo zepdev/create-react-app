@@ -9,7 +9,6 @@
 'use strict';
 
 const fs = require('fs');
-const isWsl = require('is-wsl');
 const path = require('path');
 const webpack = require('webpack');
 const resolve = require('resolve');
@@ -35,7 +34,6 @@ const typescriptFormatter = require('react-dev-utils/typescriptFormatter');
 // @remove-on-eject-begin
 const getCacheIdentifier = require('react-dev-utils/getCacheIdentifier');
 // @remove-on-eject-end
-const postcssNormalize = require('postcss-normalize');
 
 // Source maps are resource heavy and can cause out of memory issue for large source files.
 const shouldUseSourceMap = process.env.GENERATE_SOURCEMAP !== 'false';
@@ -51,6 +49,11 @@ const cssRegex = /\.css$/;
 const cssModuleRegex = /\.module\.css$/;
 const sassRegex = /\.(scss|sass)$/;
 const sassModuleRegex = /\.module\.(scss|sass)$/;
+
+// ZEPPELIN ADDITION
+// This allows Sass to use data from a json file
+const sass = require('node-sass');
+const sassUtils = require('node-sass-utils')(sass);
 
 // This is the production and development configuration.
 // It is focused on developer experience, fast rebuilds, and a minimal bundle.
@@ -92,6 +95,27 @@ module.exports = function(webpackEnv) {
         loader: require.resolve('css-loader'),
         options: cssOptions,
       },
+      // ZEPPELIN ADDITION
+      // allows SASS to use data from JS
+      {
+        loader: 'sass-loader',
+        options: {
+          functions: {
+            'get($keys)': function(keys) {
+              keys = keys.getValue().split('.');
+              const sassVars = require(paths.appSrc + '/themes/theme.json');
+              console.log(sassVars);
+              let result = sassVars;
+              let i;
+              for (i = 0; i < keys.length; i++) {
+                result = result[keys[i]];
+              }
+              result = sassUtils.castToSass(result);
+              return result;
+            },
+          },
+        },
+      },
       {
         // Options for PostCSS as we reference these options twice
         // Adds vendor prefixing based on your specified browser support in
@@ -109,10 +133,6 @@ module.exports = function(webpackEnv) {
               },
               stage: 3,
             }),
-            // Adds PostCSS Normalize as the reset css with default options,
-            // so that it honors browserslist config in package.json
-            // which in turn let's users customize the target behavior as per their needs.
-            postcssNormalize(),
           ],
           sourceMap: isEnvProduction && shouldUseSourceMap,
         },
@@ -169,8 +189,6 @@ module.exports = function(webpackEnv) {
       filename: isEnvProduction
         ? 'static/js/[name].[contenthash:8].js'
         : isEnvDevelopment && 'static/js/bundle.js',
-      // TODO: remove this when upgrading to webpack 5
-      futureEmitAssets: true,
       // There are also additional JS chunk files if you use code splitting.
       chunkFilename: isEnvProduction
         ? 'static/js/[name].[contenthash:8].chunk.js'
@@ -228,9 +246,7 @@ module.exports = function(webpackEnv) {
           },
           // Use multi-process parallel running to improve the build speed
           // Default number of concurrent runs: os.cpus().length - 1
-          // Disabled on WSL (Windows Subsystem for Linux) due to an issue with Terser
-          // https://github.com/webpack-contrib/terser-webpack-plugin/issues/21
-          parallel: !isWsl,
+          parallel: true,
           // Enable file caching
           cache: true,
           sourceMap: shouldUseSourceMap,
@@ -310,7 +326,12 @@ module.exports = function(webpackEnv) {
       rules: [
         // Disable require.ensure as it's not a standard language feature.
         { parser: { requireEnsure: false } },
-
+        // ZEPPELIN ADDITION
+        // This is used to create an icon font
+        {
+          test: /\.font\.js/,
+          use: [MiniCssExtractPlugin.loader, 'css-loader', 'webfonts-loader'],
+        },
         // First, run the linter.
         // It's important to do this before Babel processes the JS.
         {
