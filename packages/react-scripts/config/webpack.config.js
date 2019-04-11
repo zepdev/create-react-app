@@ -104,7 +104,6 @@ module.exports = function(webpackEnv) {
             'get($keys)': function(keys) {
               keys = keys.getValue().split('.');
               const sassVars = require(paths.appSrc + '/themes/theme.json');
-              console.log(sassVars);
               let result = sassVars;
               let i;
               for (i = 0; i < keys.length; i++) {
