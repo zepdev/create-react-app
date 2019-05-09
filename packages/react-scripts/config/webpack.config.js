@@ -52,6 +52,11 @@ const cssModuleRegex = /\.module\.css$/;
 const sassRegex = /\.(scss|sass)$/;
 const sassModuleRegex = /\.module\.(scss|sass)$/;
 
+// ZEPPELIN ADDITION
+// This allows Sass to use data from a json file
+const sass = require('node-sass');
+const sassUtils = require('node-sass-utils')(sass);
+
 // This is the production and development configuration.
 // It is focused on developer experience, fast rebuilds, and a minimal bundle.
 module.exports = function(webpackEnv) {
@@ -91,6 +96,26 @@ module.exports = function(webpackEnv) {
       {
         loader: require.resolve('css-loader'),
         options: cssOptions,
+      },
+      // ZEPPELIN ADDITION
+      // allows SASS to use data from JS
+      {
+        loader: 'sass-loader',
+        options: {
+          functions: {
+            'get($keys)': function(keys) {
+              keys = keys.getValue().split('.');
+              const sassVars = require(paths.appSrc + '/themes/theme.json');
+              let result = sassVars;
+              let i;
+              for (i = 0; i < keys.length; i++) {
+                result = result[keys[i]];
+              }
+              result = sassUtils.castToSass(result);
+              return result;
+            },
+          },
+        },
       },
       {
         // Options for PostCSS as we reference these options twice
