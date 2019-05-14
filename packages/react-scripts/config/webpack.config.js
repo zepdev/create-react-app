@@ -53,6 +53,11 @@ const cssModuleRegex = /\.module\.css$/;
 const sassRegex = /\.(scss|sass)$/;
 const sassModuleRegex = /\.module\.(scss|sass)$/;
 
+// ZEPPELIN ADDITION
+// This allows Sass to use data from a json file
+const sass = require('node-sass');
+const sassUtils = require('node-sass-utils')(sass);
+
 // This is the production and development configuration.
 // It is focused on developer experience, fast rebuilds, and a minimal bundle.
 module.exports = function(webpackEnv) {
@@ -89,6 +94,26 @@ module.exports = function(webpackEnv) {
       {
         loader: require.resolve('css-loader'),
         options: cssOptions,
+      },
+      // ZEPPELIN ADDITION
+      // allows SASS to use data from JS
+      {
+        loader: 'sass-loader',
+        options: {
+          functions: {
+            'get($keys)': function(keys) {
+              keys = keys.getValue().split('.');
+              const sassVars = require(paths.appSrc + '/themes/theme.json');
+              let result = sassVars;
+              let i;
+              for (i = 0; i < keys.length; i++) {
+                result = result[keys[i]];
+              }
+              result = sassUtils.castToSass(result);
+              return result;
+            },
+          },
+        },
       },
       {
         // Options for PostCSS as we reference these options twice
@@ -344,7 +369,8 @@ module.exports = function(webpackEnv) {
               loader: require.resolve('url-loader'),
               options: {
                 limit: 10000,
-                name: 'static/media/[name].[hash:8].[ext]',
+                // ZEPPELIN REMOVE HASH was: 'static/media/[name].[hash:8].[ext]'
+                name: 'static/media/[name].[ext]',
               },
             },
             // Process application JS with Babel.
@@ -513,7 +539,8 @@ module.exports = function(webpackEnv) {
               // by webpacks internal loaders.
               exclude: [/\.(js|mjs|jsx|ts|tsx)$/, /\.html$/, /\.json$/],
               options: {
-                name: 'static/media/[name].[hash:8].[ext]',
+                // ZEPPELIN REMOVE HAS was : 'static/media/[name].[hash:8].[ext]',
+                name: 'static/media/[name].[ext]',
               },
             },
             // ** STOP ** Are you adding a new loader?
@@ -586,8 +613,9 @@ module.exports = function(webpackEnv) {
         new MiniCssExtractPlugin({
           // Options similar to the same options in webpackOptions.output
           // both options are optional
-          filename: 'static/css/[name].[contenthash:8].css',
-          chunkFilename: 'static/css/[name].[contenthash:8].chunk.css',
+          // ZEPPELIN REMOVE HASH was 'static/css/[name].[contenthash:8].css' and 'static/css/[name].[contenthash:8].chunk.css',
+          filename: 'static/css/[name].css',
+          chunkFilename: 'static/css/[name].chunk.css',
         }),
       // Generate a manifest file which contains a mapping of all asset filenames
       // to their corresponding output file so that tools can pick it up without
